@@ -11,6 +11,7 @@ class CreateGithubUserTable < ActiveRecord::Migration
       t.datetime :timestamps
     end
   end
+
   def self.down
     drop_table :github_user
   end
