@@ -6,7 +6,7 @@ require 'json'
 
 #response = HTTParty.get("https://api.github.com/users/redline6561/gists")
 #browser = https://api.github.com/users/redline6561/gists
-# in terminal => ENV['apitest'] ENV 'IronYard1!' budle exec ruby lib...
+# in terminal => ENV['apitest'] ENV ['IronYard1!'] bundle exec ruby lib/cheepcreep.rb
 # TODO: QUESTION = un/pw, are those dummie?
 # TODO: QUESTION = review option.merge!
 # TODO: QUESTION = review query param syntax. gh docs
@@ -38,6 +38,7 @@ class Github
     follower_list = []
     response = self.class.get("/users/#{username}/followers", options) #can also use Github.get...
     puts "#{response.headers['x-ratelimit-remaining']} request left" #why before JSON
+    binding.pry
     json = JSON.parse(response.body)
     json.sample(20).each do |f|
       followers_list << f["login"]
@@ -67,10 +68,31 @@ class Github
     response = self.class.get("/teams/#{id}/members")
   end
 
-  def get_gist(username)
-    response = self.class.get("/users/#{username}/gist")
+#list Gists
+  def get_gists(username)
+    response = self.class.get("/users/#{username}/gists")
+    puts "#{response.headers['x-ratelimit-remaining']} request left" #why before JSON
+    gists_json = JSON.parse(response.body)
+    get_gists_id(gists_json)
+  end
+
+  def get_gists_id(gists_json)
+    gists_id = []
+    gists_json.each do |id|
+      id["id"] << gist_id
+    end
+    gist_id
+  end
+
+#delete Gists
+  def delete_gists(id)
+    response = self.class.delete("/gists/#{id}")
     puts "#{response.headers['x-ratelimit-remaining']} request left" #why before JSON
   end
+
+  
+
+
 
   def create_repo(opts={})
     options = {:body => opts.to_json}
@@ -80,7 +102,6 @@ class Github
 end
 
 class CheepcreepApp
-  include GithubUser
 end
 
 
