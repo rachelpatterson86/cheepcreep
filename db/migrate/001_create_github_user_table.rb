@@ -1,4 +1,4 @@
-class CreateGithubUserTable < ActiveRecord::Migration
+class CreateGithubUserTable < ActiveRecord::Migration[4.2]
 
   def self.up
     create_table :github_users do |t|

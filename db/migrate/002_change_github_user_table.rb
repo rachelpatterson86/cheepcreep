@@ -1,4 +1,4 @@
-class ChangeGithubUserTable < ActiveRecord::Migration
+class ChangeGithubUserTable < ActiveRecord::Migration[4.2]
 
   def change
     change_column :github_users, :public_repos, :integer #better to store in the db as integer...
