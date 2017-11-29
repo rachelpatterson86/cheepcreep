@@ -28,7 +28,7 @@ module Cheepcreep
 end
 
 class Github
-  attr_reader :auth #why use?
+  attr_reader :auth
   include HTTParty
   base_uri 'https://api.github.com'
 
@@ -62,46 +62,64 @@ class Github
     JSON.parse(response.body)
   end
 
-  # def update_user (options={})#nil no work...do't use query params unless get req, need to pass some body.
-  #   options = {:body =>{:name => name, :email => email, :blog => blog, :location => location}.json}
-  #   self.class.patch('/user',options) #need options
-  # end
+  def gists(username)
+    response = self.class.get("/users/#{username}/gists")
+    puts "#{response.headers['x-ratelimit-remaining']}"
+    gists_json = JSON.parse(response.body)
+  end
 
-  # def get_team_members(id)
-  #   response = self.class.get("/teams/#{id}/members")
-  # end
+  def delete_gist(gist_id)
+    response = self.class.delete("/gists/#{gist_id}", basic_auth: @auth)
+    puts "#{response.headers['x-ratelimit-remaining']}"
+  end
 
-#list Gists
-#   def get_gists(username)
-#     response = self.class.get("/users/#{username}/gists")
-#     puts "#{response.headers['x-ratelimit-remaining']} request left" #why before JSON
-#     gists_json = JSON.parse(response.body)
-#     get_gists_id(gists_json)
-#   end
-#
-#   def get_gists_id(gists_json)
-#     gists_id = []
-#     gists_json.each do |id|
-#       id["id"] << gist_id
-#     end
-#     gist_id
-#   end
-#
-# #delete Gists
-#   def delete_gists(id)
-#     response = self.class.delete("/gists/#{id}")
-#     puts "#{response.headers['x-ratelimit-remaining']} request left" #why before JSON
-#   end
-#
-#   def create_repo(opts={})
-#     options = {:body => opts.to_json}
-#     response = self.class.post("/users/repos", options)
-#     JSON.parse(response.body)
-#   end
+  def star_gist(gist_id)
+    response = self.class.put("/gists/#{gist_id}/star", basic_auth: @auth, headers: headers)
+    puts "#{response.headers['x-ratelimit-remaining']}"
+  end
+
+  def headers
+    {
+      "User-Agent" => ENV['GITHUB_USER'],
+      "Content-Length" => "0"
+    }
+  end
+
+  def unstar_gist(gist_id)
+    response = self.class.delete("/gists/#{gist_id}/star", basic_auth: @auth)
+    puts "#{response.headers['x-ratelimit-remaining']}"
+  end
+
+  def edit_gist(gist_id)
+    options = {
+      "description": "the description for this gist",
+      "files": {
+        "sample.txt": {
+          "content": 'new content!'
+        }
+      }
+    }.to_json
+
+    response = self.class.patch("/gists/#{gist_id}", body: options, basic_auth: @auth)
+    puts "#{response.headers['x-ratelimit-remaining']}"
+  end
+
+  def create_gist
+    response = self.class.post("/gists", body: gist_file, basic_auth: @auth)
+    puts "#{response.headers['x-ratelimit-remaining']}"
+  end
 end
 
-class CheepcreepApp
+def gist_file
+  file_name = 'sample.txt'
+  gist_file = File.open(file_name, "w"){ |somefile| somefile.puts "Hello file!"}
+  {
+    "description": "the description for this gist",
+    "public": true,
+    "files": {
+      "#{file_name}": {
+        "content": File.open(file_name, "r"){ |file| file.read }
+      }
+    }
+  }.to_json
 end
-binding.pry
-
-# Github.new.run('rachelpatterson86')
