@@ -27,16 +27,22 @@ module Cheepcreep
   end
 end
 
-class Github
+class GithubApi
   attr_reader :auth
   include HTTParty
   base_uri 'https://api.github.com'
 
   def initialize
     # ENV["FOO"] is like echo $FOO
-    @auth = {:username => ENV['GITHUB_USER'], :password => ENV['GITHUB_PASS']}
+    @auth = { username: ENV['GITHUB_USER'], password: ENV['GITHUB_PASS'] }
   end
 
+  def rate_limit(response)
+    puts "#{response.headers['x-ratelimit-remaining']}"
+  end
+end
+
+class User < GithubApi
   def run(username)
     follower_usernames = followers(username).sample(20)
     add_followers(follower_usernames)
@@ -57,69 +63,64 @@ class Github
 
   def user(username)
     response = self.class.get("/users/#{username}")
-    puts "#{response.headers['x-ratelimit-remaining']} request left"
+    rate_limit(response)
 
     JSON.parse(response.body)
   end
+end
 
+class Gist < GithubApi
   def gists(username)
     response = self.class.get("/users/#{username}/gists")
-    puts "#{response.headers['x-ratelimit-remaining']}"
-    gists_json = JSON.parse(response.body)
+    JSON.parse(response.body)
+    rate_limit(response)
   end
 
   def delete_gist(gist_id)
     response = self.class.delete("/gists/#{gist_id}", basic_auth: @auth)
-    puts "#{response.headers['x-ratelimit-remaining']}"
+    rate_limit(response)
   end
 
   def star_gist(gist_id)
-    response = self.class.put("/gists/#{gist_id}/star", basic_auth: @auth, headers: headers)
-    puts "#{response.headers['x-ratelimit-remaining']}"
-  end
-
-  def headers
-    {
-      "User-Agent" => ENV['GITHUB_USER'],
-      "Content-Length" => "0"
-    }
+    response = self.class.put("/gists/#{gist_id}/star",
+                              basic_auth: @auth,
+                              headers: {
+                                "User-Agent" => @auth[:username],
+                                "Content-Length" => "0"
+                              })
+    rate_limit(response)
   end
 
   def unstar_gist(gist_id)
     response = self.class.delete("/gists/#{gist_id}/star", basic_auth: @auth)
-    puts "#{response.headers['x-ratelimit-remaining']}"
+    rate_limit(response)
   end
 
-  def edit_gist(gist_id)
-    options = {
-      "description": "the description for this gist",
+  def edit_gist(description, content)
+    body = gist_file(description, content)
+    response = self.class.patch("/gists/#{gist_id}", body: body, basic_auth: @auth)
+    rate_limit(response)
+  end
+
+  def create_gist(description, content)
+    body = gist_file(description, content)
+    response = self.class.post("/gists", body: body, basic_auth: @auth)
+    rate_limit(response)
+  end
+
+  private
+
+  def gist_file(description, content)
+    file_name = 'sample.txt'
+    File.open(file_name, "w"){ |somefile| somefile.puts content }
+    {
+      "description": description,
+      "public": true,
       "files": {
-        "sample.txt": {
-          "content": 'new content!'
+        "#{file_name}": {
+          "content": File.open(file_name, "r"){ |file| file.read }
         }
       }
     }.to_json
-
-    response = self.class.patch("/gists/#{gist_id}", body: options, basic_auth: @auth)
-    puts "#{response.headers['x-ratelimit-remaining']}"
   end
-
-  def create_gist
-    response = self.class.post("/gists", body: gist_file, basic_auth: @auth)
-    puts "#{response.headers['x-ratelimit-remaining']}"
-  end
-end
-
-def gist_file
-  file_name = 'sample.txt'
-  gist_file = File.open(file_name, "w"){ |somefile| somefile.puts "Hello file!"}
-  {
-    "description": "the description for this gist",
-    "public": true,
-    "files": {
-      "#{file_name}": {
-        "content": File.open(file_name, "r"){ |file| file.read }
-      }
-    }
-  }.to_json
 end
